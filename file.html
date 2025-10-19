@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Snake Game 🐍</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{
+    background:linear-gradient(180deg,#0b1221,#1a1f3a);
+    color:#fff;font-family:Arial,Helvetica,sans-serif;margin:0;
+    display:flex;flex-direction:column;align-items:center;min-height:100vh
+  }
+  header{text-align:center;margin:20px}
+  h1{color:#00ff88;text-shadow:0 0 8px #00ff88;margin:0}
+  #home-screen,#game-over-screen{display:flex;flex-direction:column;align-items:center;width:100%;max-width:500px;text-align:center}
+  #difficulty{margin:10px 0}
+  select{padding:8px 15px;border-radius:8px;border:none;font-size:1em}
+  button{
+    background:#00ff88;color:#0b1221;border:none;border-radius:10px;
+    padding:15px 30px;font-size:1.1em;font-weight:bold;cursor:pointer;
+    box-shadow:0 4px 10px rgba(0,255,136,.3);margin-top:10px
+  }
+  button:active{background:#00cc70}
+  #instructions{background:rgba(255,255,255,.1);padding:10px 15px;border-radius:10px;margin-top:20px;width:85%;font-size:.9em;line-height:1.5em}
+  #game-container{display:none;flex-direction:column;align-items:center;width:100%}
+  #game{background:#111;border:3px solid #00ff88;border-radius:10px;margin-top:10px;width:95vw;max-width:500px;aspect-ratio:1/1}
+  #scoreboard{margin-top:10px;font-size:1.2em;color:#00ff88}
+  .controls{display:flex;flex-direction:column;align-items:center;margin-top:20px;gap:10px}
+  .row{display:flex;gap:10px}
+  .ctrl{width:70px;height:70px;font-size:26px;border:none;background:#00ff88;color:#0b1221;border-radius:10px;font-weight:bold}
+  .ctrl:active{background:#00cc70}
+  #game-over-screen{display:none;margin-top:20px}
+  #game-over-screen h2{color:#ff4444;text-shadow:0 0 10px #ff4444}
+  footer{margin:30px 0;color:#888;font-size:.8em}
+</style>
+</head>
+<body>
+<header><h1>Snake Game 🐍</h1></header>
+
+<!-- Home screen -->
+<section id="home-screen">
+  <label for="difficulty"><strong>Choose Difficulty:</strong></label>
+  <select id="difficulty">
+    <option value="easy">Easy (slow)</option>
+    <option value="medium" selected>Medium (normal)</option>
+    <option value="hard">Hard (fast)</option>
+  </select>
+  <button id="start-btn">Start Game</button>
+  <div id="instructions">
+    Eat red apples 🍎 to grow.<br>
+    Use arrow buttons or swipe.<br>
+    Avoid walls and yourself!
+  </div>
+</section>
+
+<!-- Game -->
+<section id="game-container">
+  <canvas id="game"></canvas>
+  <div id="scoreboard">Score: 0</div>
+  <div class="controls">
+    <button class="ctrl" id="up">▲</button>
+    <div class="row">
+      <button class="ctrl" id="left">◀</button>
+      <button class="ctrl" id="down">▼</button>
+      <button class="ctrl" id="right">▶</button>
+    </div>
+  </div>
+</section>
+
+<!-- Game Over -->
+<section id="game-over-screen">
+  <h2>Game Over!</h2>
+  <p id="final-score"></p>
+  <button id="restart-btn">Play Again</button>
+</section>
+
+<footer>© 2025 Snake Game by You</footer>
+
+<script>
+const startBtn=document.getElementById("start-btn");
+const restartBtn=document.getElementById("restart-btn");
+const home=document.getElementById("home-screen");
+const gameContainer=document.getElementById("game-container");
+const over=document.getElementById("game-over-screen");
+const scoreEl=document.getElementById("scoreboard");
+const finalScore=document.getElementById("final-score");
+const diffSelect=document.getElementById("difficulty");
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+const box=20,rows=20,cols=20;
+canvas.width=box*cols;canvas.height=box*rows;
+
+let snake=[],direction=null,foods=[],score=0,gameLoop,foodTimer,delay=150;
+
+function startGame(){
+  home.style.display="none";over.style.display="none";
+  gameContainer.style.display="flex";
+  const diff=diffSelect.value;
+  if(diff==="easy")delay=180;
+  else if(diff==="medium")delay=120;
+  else delay=80;
+  resetGame();
+}
+function resetGame(){
+  snake=[{x:9*box,y:10*box}];
+  direction=null;foods=[];score=0;
+  scoreEl.textContent="Score: 0";
+  clearInterval(gameLoop);clearInterval(foodTimer);
+  gameLoop=setInterval(draw,delay);
+  foodTimer=setInterval(spawnFood,randomTime());
+  spawnFood();
+}
+function randomTime(){return 1000+Math.random()*1700} //1–2.7s
+
+function spawnFood(){
+  if(foods.length>20)return; //limit apples
+  let x=Math.floor(Math.random()*cols)*box;
+  let y=Math.floor(Math.random()*rows)*box;
+  if(!snake.some(s=>s.x===x&&s.y===y)&&!foods.some(f=>f.x===x&&f.y===y))
+    foods.push({x,y});
+}
+
+function draw(){
+  ctx.fillStyle="#0b1221";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // draw food
+  ctx.fillStyle="red";
+  foods.forEach(f=>ctx.fillRect(f.x,f.y,box,box));
+
+  // draw snake
+  snake.forEach((s,i)=>{
+    ctx.fillStyle=i===0?"#00ff88":"#00aa66";
+    ctx.fillRect(s.x,s.y,box,box);
+  });
+
+  let head={...snake[0]};
+  if(direction==="LEFT")head.x-=box;
+  if(direction==="RIGHT")head.x+=box;
+  if(direction==="UP")head.y-=box;
+  if(direction==="DOWN")head.y+=box;
+
+  // eat food
+  let ate=false;
+  foods.forEach((f,i)=>{
+    if(f.x===head.x&&f.y===head.y){
+      foods.splice(i,1);
+      score++;scoreEl.textContent="Score: "+score;
+      ate=true;
+    }
+  });
+  if(!ate)snake.pop();
+
+  // wall/self collision
+  if(head.x<0||head.y<0||head.x>=cols*box||head.y>=rows*box||
+     snake.some(s=>s.x===head.x&&s.y===head.y)){
+    gameOver();return;
+  }
+  snake.unshift(head);
+}
+
+function gameOver(){
+  clearInterval(gameLoop);clearInterval(foodTimer);
+  gameContainer.style.display="none";
+  over.style.display="flex";
+  finalScore.textContent="Your score: "+score;
+}
+
+document.addEventListener("keydown",e=>{
+  if(e.key==="ArrowLeft"&&direction!=="RIGHT")direction="LEFT";
+  else if(e.key==="ArrowUp"&&direction!=="DOWN")direction="UP";
+  else if(e.key==="ArrowRight"&&direction!=="LEFT")direction="RIGHT";
+  else if(e.key==="ArrowDown"&&direction!=="UP")direction="DOWN";
+});
+
+["up","down","left","right"].forEach(id=>{
+  document.getElementById(id).onclick=()=>{
+    if(id==="up"&&direction!=="DOWN")direction="UP";
+    if(id==="down"&&direction!=="UP")direction="DOWN";
+    if(id==="left"&&direction!=="RIGHT")direction="LEFT";
+    if(id==="right"&&direction!=="LEFT")direction="RIGHT";
+  };
+});
+
+startBtn.onclick=startGame;
+restartBtn.onclick=startGame;
+</script>
+</body>
+</html>
